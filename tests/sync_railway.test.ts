@@ -5,6 +5,12 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { description, sync } from '../scripts/sync_railway.ts';
 
+test('published description fits the 1024-character limit', () => {
+  const skill = readFileSync(new URL('../skills/use-railway/SKILL.md', import.meta.url), 'utf8');
+  const value = description(skill).replace(/^description: >\n/, '').replace(/\n +/g, ' ').trim();
+  assert.ok(value.length <= 1024, `Description is ${value.length} characters`);
+});
+
 test('sync mirrors upstream except for the local description', () => {
   const root = mkdtempSync(join(tmpdir(), 'railway-sync-'));
   try {
@@ -46,6 +52,8 @@ test('sync mirrors upstream except for the local description', () => {
     assert.equal(readFileSync(baseline, 'utf8'), 'description: Changed upstream description.\n');
     sync(join(root, 'upstream'), repo);
 
+    writeFileSync(join(target, 'SKILL.md'), expected.replace('Local description.', '—'.repeat(400)));
+    sync(join(root, 'upstream'), repo); // 400 characters, but over 1024 UTF-8 bytes
     writeFileSync(join(target, 'SKILL.md'), expected.replace('Local description.', 'x'.repeat(1025)));
     assert.throws(() => sync(join(root, 'upstream'), repo), /1024/);
     assert.equal(description(readFileSync(join(target, 'SKILL.md'), 'utf8')), 'description: >\n  ' + 'x'.repeat(1025));

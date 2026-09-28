@@ -29,7 +29,7 @@ export function sync(upstream: string, repo: string, approveDescriptionChange = 
   const value = localDescription.startsWith('description: >\n')
     ? localDescription.split('\n').slice(1).map((line) => line.trim()).join(' ')
     : localDescription.slice('description:'.length).trim();
-  if (Buffer.byteLength(value) > 1024) throw new Error('description exceeds 1024 bytes');
+  if (value.length > 1024) throw new Error('description exceeds 1024 characters');
 
   const updated = source.replace(upstreamDescription, localDescription);
   rmSync(target, { recursive: true });
