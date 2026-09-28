@@ -1,5 +1,10 @@
 # Changelog
 
+## v.0.1.2 — 2026-09-28
+
+### Changed
+- Upstream Railway updates now open a review PR, including description changes, instead of committing directly or opening an issue.
+
 ## v.0.1.1 — 2026-09-28
 
 ### Changed

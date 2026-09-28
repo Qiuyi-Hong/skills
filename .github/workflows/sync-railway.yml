@@ -5,15 +5,10 @@ on:
     - cron: '0 9 * * *'
       timezone: 'Europe/London'
   workflow_dispatch:
-    inputs:
-      approve_description_change:
-        description: 'I reviewed the upstream description diff; sync it now'
-        type: boolean
-        default: false
 
 permissions:
   contents: write
-  issues: write
+  pull-requests: write
 
 concurrency:
   group: sync-railway
@@ -33,50 +28,20 @@ jobs:
         with:
           node-version: '24'
       - run: npm ci
-      - name: Compare upstream description with last accepted version
-        id: guard
-        run: |
-          node scripts/sync_railway.ts upstream --print-upstream-description > /tmp/railway-description.txt
-          if cmp -s scripts/railway-upstream-description.txt /tmp/railway-description.txt; then
-            echo 'changed=false' >> "$GITHUB_OUTPUT"
-          else
-            diff -u scripts/railway-upstream-description.txt /tmp/railway-description.txt > /tmp/railway-description.diff || test "$?" -eq 1
-            echo 'changed=true' >> "$GITHUB_OUTPUT"
-          fi
-      - name: Notify owner of description change
-        if: steps.guard.outputs.changed == 'true' && !(github.event_name == 'workflow_dispatch' && inputs.approve_description_change)
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          revision=$(git -C upstream rev-parse HEAD)
-          {
-            printf '@%s Railway changed the upstream skill description at `%s`. Review the diff before syncing.\n\n' "${GITHUB_REPOSITORY%%/*}" "$revision"
-            printf '```diff\n'
-            cat /tmp/railway-description.diff
-            printf '```\n\nRun [Sync Railway skill](%s/%s/actions/workflows/sync-railway.yml) manually with **approve_description_change** after reviewing.\n' "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY"
-          } > /tmp/railway-notice.md
-          issue=$(gh issue list --state open --limit 100 --json number,title --jq '.[] | select(.title == "Railway upstream description changed") | .number' | head -n 1)
-          if [ -z "$issue" ]; then
-            gh issue create --title 'Railway upstream description changed' --assignee "${GITHUB_REPOSITORY%%/*}" --body-file /tmp/railway-notice.md
-          elif ! gh issue view "$issue" --json body --jq '.body' | grep -Fq "$revision"; then
-            gh issue comment "$issue" --body-file /tmp/railway-notice.md
-          fi
-      - name: Stop until description is reviewed
-        if: steps.guard.outputs.changed == 'true' && !(github.event_name == 'workflow_dispatch' && inputs.approve_description_change)
-        run: exit 1
       - name: Update skill
-        run: |
-          if [[ "${{ github.event_name }}" == 'workflow_dispatch' && "${{ inputs.approve_description_change }}" == 'true' ]]; then
-            npm run sync:railway -- upstream --approve-description-change
-          else
-            npm run sync:railway -- upstream
-          fi
+        run: npm run sync:railway -- upstream
       - name: Check sync
         run: npm run typecheck && npm test
-      - name: Commit updates
-        run: |
-          git add skills/use-railway licenses/railway-skills.LICENSE scripts/railway-upstream-description.txt
-          if ! git diff --cached --quiet; then
-            git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'chore: sync Railway skill from upstream'
-            git push
-          fi
+      - name: Open or update review PR
+        uses: peter-evans/create-pull-request@v8
+        with:
+          branch: chore/sync-railway
+          title: 'chore: sync Railway skill from upstream'
+          reviewers: Qiuyi-Hong
+          commit-message: 'chore: sync Railway skill from upstream'
+          body: 'Review upstream changes, including any change to the saved upstream description. The published description stays local.'
+          add-paths: |
+            skills/use-railway
+            licenses/railway-skills.LICENSE
+            scripts/railway-upstream-description.txt
+          delete-branch: true

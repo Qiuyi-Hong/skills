@@ -41,14 +41,10 @@ test('sync mirrors upstream except for the local description', () => {
 
     const changed = upstream.replace('Upstream description.', 'Changed upstream description.');
     writeFileSync(join(source, 'SKILL.md'), changed);
-    writeFileSync(join(source, 'changed-only.md'), 'must wait for approval');
-    assert.throws(() => sync(join(root, 'upstream'), repo), /Upstream description changed/);
-    assert.equal(readFileSync(join(target, 'SKILL.md'), 'utf8'), expected);
-    assert.equal(existsSync(join(target, 'changed-only.md')), false);
-    assert.equal(readFileSync(baseline, 'utf8'), 'description: Upstream description.\n');
-    sync(join(root, 'upstream'), repo, true);
+    writeFileSync(join(source, 'changed-only.md'), 'new reference');
+    sync(join(root, 'upstream'), repo);
     assert.equal(readFileSync(join(target, 'SKILL.md'), 'utf8'), changed.replace('description: Changed upstream description.', 'description: >\n  Local description.'));
-    assert.equal(readFileSync(join(target, 'changed-only.md'), 'utf8'), 'must wait for approval');
+    assert.equal(readFileSync(join(target, 'changed-only.md'), 'utf8'), 'new reference');
     assert.equal(readFileSync(baseline, 'utf8'), 'description: Changed upstream description.\n');
     sync(join(root, 'upstream'), repo);
 

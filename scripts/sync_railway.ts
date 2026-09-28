@@ -12,20 +12,13 @@ export function description(text: string): string {
   return field[0];
 }
 
-export function upstreamDescription(upstream: string): string {
-  return description(readFileSync(join(upstream, skillPath, 'SKILL.md'), 'utf8'));
-}
-
-export function sync(upstream: string, repo: string, approveDescriptionChange = false): void {
+export function sync(upstream: string, repo: string): void {
   const target = join(repo, 'skills/use-railway');
   const sourceDir = join(upstream, skillPath);
   const localDescription = description(readFileSync(join(target, 'SKILL.md'), 'utf8'));
   const source = readFileSync(join(sourceDir, 'SKILL.md'), 'utf8');
   const upstreamDescription = description(source);
   const baseline = join(repo, 'scripts/railway-upstream-description.txt');
-  if (readFileSync(baseline, 'utf8') !== `${upstreamDescription}\n` && !approveDescriptionChange) {
-    throw new Error('Upstream description changed; review it before syncing');
-  }
   const value = localDescription.startsWith('description: >\n')
     ? localDescription.split('\n').slice(1).map((line) => line.trim()).join(' ')
     : localDescription.slice('description:'.length).trim();
@@ -42,13 +35,7 @@ export function sync(upstream: string, repo: string, approveDescriptionChange = 
 }
 
 if (import.meta.main) {
-  const [upstream, option] = process.argv.slice(2);
-  if (!upstream || (option && !['--print-upstream-description', '--approve-description-change'].includes(option))) {
-    throw new Error('Usage: node scripts/sync_railway.ts <upstream-repo> [--print-upstream-description|--approve-description-change]');
-  }
-  if (option === '--print-upstream-description') {
-    process.stdout.write(`${upstreamDescription(upstream)}\n`);
-  } else {
-    sync(upstream, fileURLToPath(new URL('..', import.meta.url)), option === '--approve-description-change');
-  }
+  const [upstream] = process.argv.slice(2);
+  if (!upstream) throw new Error('Usage: node scripts/sync_railway.ts <upstream-repo>');
+  sync(upstream, fileURLToPath(new URL('..', import.meta.url)));
 }
