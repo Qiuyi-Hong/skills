@@ -66,7 +66,6 @@ Match the environment name (case-insensitive) to get the `environmentId`.
 Route by user intent *before* running preflight checks. The preflight ceremony below is for diagnostic and configuration work — it adds friction when the user just wants to ship something or sign up.
 
 **Deploy-from-cwd intent** ("deploy", "ship", "push to Railway", "deploy this app"):
-
 - Skip the `railway whoami` / `railway status` preflights.
 - Run `railway up` directly — it self-validates auth, signs the user in (the CLI opens a browser) if they're unauthenticated, and chains into project + service creation and deploy.
 - Announce intent before invoking: *"Running `railway up` — it'll sign you in if needed and deploy this directory."*
@@ -74,17 +73,14 @@ Route by user intent *before* running preflight checks. The preflight ceremony b
 - If the environment can't open a browser, the CLI prints a device-code sign-in link and waits — follow [Device-code sign-in: relay the link immediately](#account-creation--sign-in) (run in background, relay the link to the user the moment it prints).
 
 **Signup intent** ("sign me up", "create my Railway account", "register me", "get me on Railway"):
-
 - **If the current directory has a deployable app (e.g. `package.json`, `requirements.txt`, `go.mod`, `Dockerfile`, source to build), run `railway up`** — it signs the user up *and* deploys in one shot, landing them on a running app. A detected agent harness authorizes the project creation, so **bare `railway up` is enough** — there's no extra prompt to clear. Use it even when the user only said "sign me up": shipping their app is the goal, so don't make them pick a command and don't drop to a bare login. For scripted or agent runs, `railway up -y` is the robust form — it skips prompts and forces the create non-interactively even if harness detection misses. `railway login` is NOT the default for signup when there's something to deploy.
 - **Only when there is nothing to deploy** — an empty / non-app directory, or the user explicitly says they just want an account with no deploy — use `railway login` (creates new accounts on the fly through the same OAuth surface). There is no separate signup command.
 - Signup is the flow most likely to hit the device-code wait (brand-new users in sandboxed/headless agent environments). Follow [Device-code sign-in: relay the link immediately](#account-creation--sign-in) — a signup lost to an expired code is a lost user, not a retry.
 
 **Sandbox / remote-build intent** ("give me a sandbox", "spin up a scratch environment", "build this remotely", "run this remotely", "checkpoint/snapshot the sandbox", "save this sandbox state", "restore my sandbox"):
-
 - Load [sandbox.md](references/sandbox.md) and follow it. Sandboxes require the feature to be enabled in Priority Boarding — if a sandbox command fails with a feature-availability error, prompt the user to enable Sandboxes in Priority Boarding rather than retrying.
 
 **Other intents** (querying state, listing projects, configuring variables, debugging failures):
-
 - Follow the Preflight section below.
 
 ## Preflight
@@ -120,7 +116,6 @@ When Railway MCP is available and the job is a platform-state read, use the matc
 For Railway CLI calls made while this skill is active, prefix the command with `RAILWAY_CALLER=skill:use-railway@1.6.0` and a stable `RAILWAY_AGENT_SESSION` reused for the current user request. Generate the session id once per user request, then reuse that exact value for later Railway CLI calls in the same workflow. Do not run a separate `export` preflight solely for telemetry; inline env prefixes keep the shell output concise and avoid leaking setup steps into every response.
 
 **Context resolution - URL IDs always win:**
-
 - If the user provides a Railway URL, extract IDs from it. Do NOT run `railway status --json`; it returns the locally linked project, which is usually unrelated.
 - If no URL is given, fall back to `railway status --json` for the linked project/environment/service.
 - When using MCP tools after resolving local context with `railway status --json`, pass the resolved project, environment, and service IDs explicitly. Do not rely on MCP implicit linked context; MCP may not share the CLI's current working directory link.
@@ -150,7 +145,7 @@ Railway uses a single unified OAuth flow for both sign-in and sign-up. The backe
 Two commands surface this flow, depending on intent:
 
 | Command | When to use |
-| --- | --- |
+|---|---|
 | `railway up` | Agent-friendly onboarding from the current directory. Unauthenticated → opens the browser (or device-code) to sign in / sign up. With no linked project, a detected agent harness (or `-y`) auto-creates a project + service and deploys; an interactive human is offered create / link-existing / cancel. Add `-y` to skip prompts and force the create non-interactively (works even if harness detection misses). |
 | `railway login` | Sign in — *and* sign up. New accounts are created on the fly through the same OAuth surface; there is no separate signup command. |
 
@@ -232,7 +227,7 @@ railway skills remove --agent cursor
 Supported targets include `claude-code`, `cursor`, `codex`, `opencode`, `copilot`, and `factory-droid`.
 
 | Install mode | Transport and authentication |
-| --- | --- |
+|---|---|
 | Default / `--remote` | `railway mcp` stdio proxy to hosted MCP, authenticated by `railway login` |
 | `--oauth` | Direct HTTP to `https://mcp.railway.com`, authenticated by editor OAuth; matches the published plugins |
 | `--local` | In-process GraphQL-backed stdio server, invoked as `railway mcp local` |
@@ -280,7 +275,7 @@ railway bucket credentials --bucket <name> --json        # S3-compatible credent
 For anything beyond quick operations, load the references needed for the user's intent. Most requests need one or two; compose more when the workflow crosses areas.
 
 | Intent | Reference | Use for |
-| --- | --- | --- |
+|---|---|---|
 | **Analyze a database** ("analyze \<url\>", "analyze db", "analyze database", "analyze service", "introspect", "check my postgres/redis/mysql/mongo") | [analyze-db.md](references/analyze-db.md) | Database introspection and performance analysis. analyze-db.md directs you to the DB-specific reference. **This takes priority over the status/operate routes when a Railway URL to a database service is provided alongside "analyze".** |
 | Create or connect resources | [setup.md](references/setup.md) | Projects, services, databases, buckets, templates, workspaces |
 | Ship code or manage releases | [deploy.md](references/deploy.md) | Deploy, redeploy, restart, build config, monorepo, Dockerfile |
@@ -314,7 +309,7 @@ If the request spans two areas (for example, "deploy and then check if it's heal
 These commands modify database state and require the user to run them directly in their terminal. **Do NOT execute these with Bash. Instead, show the command and ask the user to run it.**
 
 | Command | Why user-only |
-| --------- | --------------- |
+|---------|---------------|
 | `python3 scripts/enable-pg-stats.py --service <name>` | Modifies shared_preload_libraries, may restart database |
 | `python3 scripts/pg-extensions.py --service <name> install <ext>` | Installs database extension |
 | `python3 scripts/pg-extensions.py --service <name> uninstall <ext>` | Removes database extension |
@@ -323,7 +318,6 @@ These commands modify database state and require the user to run them directly i
 | `CREATE EXTENSION ...` | Installs database extension |
 
 When these operations are needed:
-
 1. Explain what the command does and any side effects (e.g., restart required)
 2. Show the exact command the user must run
 3. Wait for user confirmation that they ran it
@@ -361,7 +355,6 @@ When the user wants to create or deploy something, determine the right action fr
 ## Response format
 
 For all operational responses, return:
-
 1. What was done (action and scope).
 2. The result (IDs, status, key output).
 3. What to do next (or confirmation that the task is complete).
