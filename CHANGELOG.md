@@ -1,5 +1,10 @@
 # Changelog
 
+## v.0.1.1 — 2026-09-28
+
+### Changed
+- Clarified Railway signup guidance: use `railway up` to sign up and deploy an app, or `railway login` when only an account is needed.
+
 ## v.0.1.0 — 2026-09-28
 
 ### Added
